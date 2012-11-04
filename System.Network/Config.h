@@ -43,4 +43,46 @@
 
 #endif
 
+template<int S> struct aligned2
+{
+	short values[((S + 1) & ~1) >> 1];
+	void* operator &()
+	{
+		return reinterpret_cast<void*>(&values[0]);
+	}
+
+	const void* operator &() const
+	{
+		return reinterpret_cast<const void*>(&values[0]);
+	}
+};
+
+template<int S> struct aligned4
+{
+	int values[((S + 3) & ~3) >> 2];
+	void* operator &()
+	{
+		return reinterpret_cast<void*>(&values[0]);
+	}
+
+	const void* operator &() const
+	{
+		return reinterpret_cast<const void*>(&values[0]);
+	}
+};
+
+template<int S> struct aligned8
+{
+	double values[((S + 7) & ~7) >> 3];
+	void* operator &()
+	{
+		return reinterpret_cast<void*>(&values[0]);
+	}
+
+	const void* operator &() const
+	{
+		return reinterpret_cast<const void*>(&values[0]);
+	}
+};
+
 #define STATIC_ASSERT(expr)	typedef char CC_##__LINE__ [(expr) ? 1 : -1]
