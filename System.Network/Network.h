@@ -147,7 +147,7 @@ struct IAsyncResult
 struct Socket
 {
 	struct Impl;
-	uint8 m_impl[12];
+	aligned4<12> m_impl;
 
 	void Accept(Socket& accepted);
 	void Listen(int backlog);
@@ -184,8 +184,8 @@ struct Socket
 
 struct TcpListener
 {	
-	struct Impl;
-	uint8 m_impl[32];
+	struct Impl;	
+	aligned4<32> m_impl;
 
 	TcpListener(IPAdress& adress, int port);
 	TcpListener(IPEndPoint& endPoint);
