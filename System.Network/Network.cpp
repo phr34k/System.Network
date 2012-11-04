@@ -607,7 +607,7 @@ void TcpListener::Start(int backlog)
 {
 	if ((backlog > 0x7fffffff) || (backlog < 0))
     {
-        //out of range
+        throw SocketException("Argument backlog is out of range.");
     }
 
 	reinterpret_cast<Impl*>(m_impl)->socket.Bind(reinterpret_cast<Impl*>(m_impl)->endPoint);
@@ -624,20 +624,20 @@ struct NullIOManager : SocketIOManager
 {
 	IAsyncResult* BeginSend( uint8* buffer, int32 offset, int32 size, void* state ) 
 	{	
-		throw SocketException("Operation has not been implamented.");			
+		throw SocketException("Operation has not been implemented.");			
 	}
 
 	IAsyncResult* BeginReceive( uint8* buffer, int32 offset, int32 size, void* state ) 
 	{
-		throw SocketException("Operation has not been implamented.");			
+		throw SocketException("Operation has not been implemented.");			
 	}
 	int  EndSend( IAsyncResult* result )
 	{
-		throw SocketException("Operation has not been implamented.");			
+		throw SocketException("Operation has not been implemented.");			
 	}
 	int  EndReceive( IAsyncResult* result ) 
 	{
-		throw SocketException("Operation has not been implamented.");			
+		throw SocketException("Operation has not been implemented.");			
 	}
 };
 
