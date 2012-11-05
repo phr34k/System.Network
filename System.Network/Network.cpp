@@ -150,17 +150,17 @@ std::string IPEndPoint::ToString() const
 Socket::Socket()
 {
 	STATIC_ASSERT(sizeof(Impl) <= sizeof(m_impl));
-	new (&m_impl[0]) Impl();
-	reinterpret_cast<Socket::Impl*>(m_impl)->adressFamilly = AdressFamilly::Unspecified;
-	reinterpret_cast<Socket::Impl*>(m_impl)->socket = INVALID_SOCKET;
+	new (&m_impl) Impl();
+	reinterpret_cast<Socket::Impl*>(&m_impl)->adressFamilly = AdressFamilly::Unspecified;
+	reinterpret_cast<Socket::Impl*>(&m_impl)->socket = INVALID_SOCKET;
 }
 Socket::Socket(AdressFamilly::Enum familly, SocketType::Enum socketType, ProtocolType::Enum protocolType)
 {
 	STATIC_ASSERT(sizeof(Impl) <= sizeof(m_impl));
-	new (&m_impl[0]) Impl();
-	reinterpret_cast<Socket::Impl*>(m_impl)->adressFamilly = familly;
-	reinterpret_cast<Socket::Impl*>(m_impl)->socket = socket(familly, socketType, protocolType);
-    if (reinterpret_cast<Socket::Impl*>(m_impl)->socket == INVALID_SOCKET) {
+	new (&m_impl) Impl();
+	reinterpret_cast<Socket::Impl*>(&m_impl)->adressFamilly = familly;
+	reinterpret_cast<Socket::Impl*>(&m_impl)->socket = socket(familly, socketType, protocolType);
+    if (reinterpret_cast<Socket::Impl*>(&m_impl)->socket == INVALID_SOCKET) {
         wprintf(L"socket function failed with error: %ld\n", WSAGetLastError());
     }
 }
@@ -177,14 +177,14 @@ void Socket::Accept(Socket& accepted)
 {	
 	#if PLATFORM == PLATFORM_WIN32
 	u_long nonblocking = 0;
-	ioctlsocket(reinterpret_cast<Impl*>(m_impl)->socket, FIONBIO, &nonblocking);
+	ioctlsocket(reinterpret_cast<Impl*>(&m_impl)->socket, FIONBIO, &nonblocking);
 	#elif PLATFORM == PLATFORM_LINUX
-	fcntl(s, F_SETFL, fcntl(reinterpret_cast<Impl*>(m_impl)->socket, F_GETFL, 0) & ~O_NONBLOCK);
+	fcntl(s, F_SETFL, fcntl(reinterpret_cast<Impl*>(&m_impl)->socket, F_GETFL, 0) & ~O_NONBLOCK);
 	#endif
 
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX	
-	reinterpret_cast<Impl*>(accepted.m_impl)->socket = accept( reinterpret_cast<Impl*>(m_impl)->socket, 0,0);
-	if(reinterpret_cast<Impl*>(accepted.m_impl)->socket == INVALID_SOCKET) {		
+	reinterpret_cast<Impl*>(&accepted.m_impl)->socket = accept( reinterpret_cast<Impl*>(&m_impl)->socket, 0,0);
+	if(reinterpret_cast<Impl*>(&accepted.m_impl)->socket == INVALID_SOCKET) {		
 	}
 	
 	#endif	
@@ -193,7 +193,7 @@ void Socket::Accept(Socket& accepted)
 void Socket::Shutdown( int shutdownKinds )
 {	
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
-	shutdown(reinterpret_cast<Socket::Impl*>(m_impl)->socket, shutdownKinds);
+	shutdown(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, shutdownKinds);
 	#endif
 }
 
@@ -201,7 +201,7 @@ void Socket::Disconnect( bool reuseSocket )
 {
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX	
 	int result = reuseSocket == true ? 1 : 0;
-	setsockopt(reinterpret_cast<Socket::Impl*>(m_impl)->socket, SOL_SOCKET, SO_REUSEADDR, (char*)&result, sizeof( result ));
+	setsockopt(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, SOL_SOCKET, SO_REUSEADDR, (char*)&result, sizeof( result ));
 	#endif
 }
 
@@ -209,18 +209,18 @@ void Socket::Connect( const IPAdress& adress, int port)
 {
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX	
 	sockaddr_in remote;
-	remote.sin_family=reinterpret_cast<Socket::Impl*>(m_impl)->adressFamilly; 
+	remote.sin_family=reinterpret_cast<Socket::Impl*>(&m_impl)->adressFamilly; 
 	remote.sin_addr.s_addr = adress.adress;
 	remote.sin_port=htons(port); //port to use
 
 	int error = 0;
-	if( SOCKET_ERROR == (error = connect(reinterpret_cast<Socket::Impl*>(m_impl)->socket, (sockaddr*)&remote, sizeof(remote)))) {
+	if( SOCKET_ERROR == (error = connect(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, (sockaddr*)&remote, sizeof(remote)))) {
 		#if PLATFORM == PLATFORM_WIN32 
 		int errorCode = WSAGetLastError();
-		closesocket(reinterpret_cast<Socket::Impl*>(m_impl)->socket);
+		closesocket(reinterpret_cast<Socket::Impl*>(&m_impl)->socket);
 		throw SocketException(resolveError(errorCode));			
 		#elif
-		closesocket(reinterpret_cast<Socket::Impl*>(m_impl)->socket);
+		closesocket(reinterpret_cast<Socket::Impl*>(&m_impl)->socket);
 		throw SocketException(0);			
 		#endif
 	}
@@ -265,7 +265,7 @@ void Socket::Bind(const IPEndPoint& endPoint)
 	local.sin_family=AF_INET;
 	local.sin_addr.s_addr=endPoint.adress.adress; 
 	local.sin_port=htons(endPoint.port); 
-	int error = bind(reinterpret_cast<Socket::Impl*>(m_impl)->socket,(sockaddr*)&local, sizeof(local));
+	int error = bind(reinterpret_cast<Socket::Impl*>(&m_impl)->socket,(sockaddr*)&local, sizeof(local));
 	if( error != 0 ) {
 		#if PLATFORM == PLATFORM_WIN32 
 		int errorCode = WSAGetLastError();
@@ -280,7 +280,7 @@ void Socket::Bind(const IPEndPoint& endPoint)
 void Socket::Listen(int backlog)
 {
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
-	int error = listen(reinterpret_cast<Socket::Impl*>(m_impl)->socket, backlog);
+	int error = listen(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, backlog);
 	if( error != 0 ) {
 		#if PLATFORM == PLATFORM_WIN32 
 		int errorCode = WSAGetLastError();
@@ -299,36 +299,36 @@ void Socket::Close( int timeout )
 	{
 		//close socket immediately
 		#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
-		closesocket(reinterpret_cast<Socket::Impl*>(m_impl)->socket);
+		closesocket(reinterpret_cast<Socket::Impl*>(&m_impl)->socket);
 		#endif
 	}	
 	else
 	{
 		//shutdown any send operations
 		#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
-		shutdown(reinterpret_cast<Socket::Impl*>(m_impl)->socket, SD_SEND);
+		shutdown(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, SD_SEND);
 		#endif
 
 		#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
 		//set the receive timeout 
-        if( setsockopt(reinterpret_cast<Socket::Impl*>(m_impl)->socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) != 0) {
-			closesocket(reinterpret_cast<Socket::Impl*>(m_impl)->socket);  
+        if( setsockopt(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) != 0) {
+			closesocket(reinterpret_cast<Socket::Impl*>(&m_impl)->socket);  
 		}
 		//await any data & close it
-		else if( recv(reinterpret_cast<Socket::Impl*>(m_impl)->socket, 0, 0, 0) != 0 ) {
-			closesocket(reinterpret_cast<Socket::Impl*>(m_impl)->socket);  
+		else if( recv(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, 0, 0, 0) != 0 ) {
+			closesocket(reinterpret_cast<Socket::Impl*>(&m_impl)->socket);  
 		}
 		else 
 		{
 			//Remove the async bit and close it.
 			u_long bytesRead = 0;
-			if((ioctlsocket(reinterpret_cast<Socket::Impl*>(m_impl)->socket, FIONREAD, &bytesRead) != 0) || (bytesRead != 0)) {
-				closesocket(reinterpret_cast<Socket::Impl*>(m_impl)->socket);  
+			if((ioctlsocket(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, FIONREAD, &bytesRead) != 0) || (bytesRead != 0)) {
+				closesocket(reinterpret_cast<Socket::Impl*>(&m_impl)->socket);  
 			}
 			//otherwise close the socket anyhow.
 			else
 			{
-				closesocket(reinterpret_cast<Socket::Impl*>(m_impl)->socket);  
+				closesocket(reinterpret_cast<Socket::Impl*>(&m_impl)->socket);  
 			}
 			
 		}		
@@ -346,7 +346,7 @@ int  Socket::ReceiveTimeout()
 {	
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
 	uint32 timeout; int l = sizeof(timeout);
-	if( getsockopt(reinterpret_cast<Socket::Impl*>(m_impl)->socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, &l) != -1) {
+	if( getsockopt(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, &l) != -1) {
 		return timeout;
 	} else {
 		return -1;
@@ -358,7 +358,7 @@ int  Socket::SendTimeout()
 {
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
 	uint32 timeout; int l = sizeof(timeout);
-	if( getsockopt(reinterpret_cast<Socket::Impl*>(m_impl)->socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, &l) != -1) {
+	if( getsockopt(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, &l) != -1) {
 		return timeout;
 	} else {
 		return -1;
@@ -377,7 +377,7 @@ void Socket::ReceiveTimeout(int timeout)
     }
 
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
-	setsockopt(reinterpret_cast<Socket::Impl*>(m_impl)->socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof( timeout ));
+	setsockopt(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof( timeout ));
 	#endif
 }
 void Socket::SendTimeout(int timeout)
@@ -392,13 +392,13 @@ void Socket::SendTimeout(int timeout)
     }
 
 	#if PLATFORM == PLATFORM_WIN32 || PLATFORM == PLATFORM_LINUX
-	setsockopt(reinterpret_cast<Socket::Impl*>(m_impl)->socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof( timeout ));
+	setsockopt(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof( timeout ));
 	#endif
 }
 
 int  Socket::Send( uint8* buffer, int32 offset, int32 size )
 {
-	int length = send(reinterpret_cast<Socket::Impl*>(m_impl)->socket, (char*)(buffer + offset), size, 0);
+	int length = send(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, (char*)(buffer + offset), size, 0);
 	if( length == SOCKET_ERROR ) {
 		#if PLATFORM == PLATFORM_WIN32 
 		int errorCode = WSAGetLastError();
@@ -413,7 +413,7 @@ int  Socket::Send( uint8* buffer, int32 offset, int32 size )
 
 int  Socket::Receive( uint8* buffer, int32 offset, int32 size )
 {
-	int length = recv(reinterpret_cast<Socket::Impl*>(m_impl)->socket, (char*)(buffer + offset), size, 0);
+	int length = recv(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, (char*)(buffer + offset), size, 0);
 	if( length == SOCKET_ERROR ) {
 		#if PLATFORM == PLATFORM_WIN32 
 		int errorCode = WSAGetLastError();
@@ -428,25 +428,25 @@ int  Socket::Receive( uint8* buffer, int32 offset, int32 size )
 
 bool Socket::Blocking()
 {
-	return reinterpret_cast<Socket::Impl*>(m_impl)->blocking == 1;
+	return reinterpret_cast<Socket::Impl*>(&m_impl)->blocking == 1;
 }
 
 void Socket::Blocking(bool blocking)
 {
 	int value = blocking == true ? 1 : 0;
-	if( reinterpret_cast<Socket::Impl*>(m_impl)->blocking != value ) {
-		reinterpret_cast<Socket::Impl*>(m_impl)->blocking = value;
+	if( reinterpret_cast<Socket::Impl*>(&m_impl)->blocking != value ) {
+		reinterpret_cast<Socket::Impl*>(&m_impl)->blocking = value;
 		if( blocking == true )
 		{
 			//remove non-blocking status
 			#if PLATFORM == PLATFORM_WIN32
 			u_long nonblocking = 0;
-			if( ioctlsocket(reinterpret_cast<Impl*>(m_impl)->socket, FIONBIO, &nonblocking) != 0x0 ) {
+			if( ioctlsocket(reinterpret_cast<Impl*>(&m_impl)->socket, FIONBIO, &nonblocking) != 0x0 ) {
 				int errorCode = WSAGetLastError();
 				throw SocketException(resolveError(errorCode));	
 			}
 			#elif PLATFORM == PLATFORM_LINUX
-			fcntl(s, F_SETFL, fcntl(reinterpret_cast<Impl*>(m_impl)->socket, F_GETFL, 0) & ~O_NONBLOCK);
+			fcntl(s, F_SETFL, fcntl(reinterpret_cast<Impl*>(&m_impl)->socket, F_GETFL, 0) & ~O_NONBLOCK);
 			#endif
 		}
 		else
@@ -454,12 +454,12 @@ void Socket::Blocking(bool blocking)
 			//add blocking status
 			#if PLATFORM == PLATFORM_WIN32
 			u_long nonblocking = 1;
-			if( ioctlsocket(reinterpret_cast<Impl*>(m_impl)->socket, FIONBIO, &nonblocking) != 0x0 ) { 
+			if( ioctlsocket(reinterpret_cast<Impl*>(&m_impl)->socket, FIONBIO, &nonblocking) != 0x0 ) { 
 				int errorCode = WSAGetLastError();
 				throw SocketException(resolveError(errorCode));	
 			}
 			#elif PLATFORM == PLATFORM_LINUX
-			fcntl(s, F_SETFL, fcntl(reinterpret_cast<Impl*>(m_impl)->socket, F_GETFL, 0) | O_NONBLOCK);
+			fcntl(s, F_SETFL, fcntl(reinterpret_cast<Impl*>(&m_impl)->socket, F_GETFL, 0) | O_NONBLOCK);
 			#endif
 		}
 	}
@@ -470,7 +470,7 @@ bool Socket::Poll( int microSeconds, SelectMode::Enum mode)
 {
 	fd_set fds;
 	FD_ZERO(&fds);
-	FD_SET(reinterpret_cast<Socket::Impl*>(m_impl)->socket, &fds);
+	FD_SET(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, &fds);
 
 	int num = 0;
     if (microSeconds != -1)
@@ -518,7 +518,7 @@ bool Socket::Poll( int microSeconds, SelectMode::Enum mode)
         return false;
     }
 
-	return fds.fd_array[0] == reinterpret_cast<Socket::Impl*>(m_impl)->socket;
+	return fds.fd_array[0] == reinterpret_cast<Socket::Impl*>(&m_impl)->socket;
 
 }
 
@@ -527,7 +527,7 @@ bool Socket::Poll( int microSeconds, SelectMode::Enum mode)
 IPEndPoint const* Socket::LocalEndPoint(IPEndPoint& endPoint)
 {
 	sockaddr_in addr; int length = sizeof(sockaddr_in);
-    if (getsockname(reinterpret_cast<Socket::Impl*>(m_impl)->socket, (sockaddr*)&addr, &length) == 0) {
+    if (getsockname(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, (sockaddr*)&addr, &length) == 0) {
 	   endPoint = IPEndPoint(addr.sin_addr.s_addr, ntohs( addr.sin_port ));
 	   return &endPoint;
     }
@@ -538,7 +538,7 @@ IPEndPoint const* Socket::LocalEndPoint(IPEndPoint& endPoint)
 IPEndPoint const* Socket::RemoteEndPoint(IPEndPoint& endPoint)
 {
 	sockaddr_in addr; int length = sizeof(sockaddr_in);
-    if (getpeername(reinterpret_cast<Socket::Impl*>(m_impl)->socket, (sockaddr*)&addr, &length) == 0) {
+    if (getpeername(reinterpret_cast<Socket::Impl*>(&m_impl)->socket, (sockaddr*)&addr, &length) == 0) {
 	   endPoint = IPEndPoint(addr.sin_addr.s_addr, ntohs( addr.sin_port ));
 	   return &endPoint;
     }
@@ -572,7 +572,7 @@ int  Socket::EndReceive( IAsyncResult* result )
 TcpListener::TcpListener(IPAdress& adress, int port)
 {
 	STATIC_ASSERT(sizeof(Impl) <= sizeof(m_impl));
-	new (&m_impl[0]) Impl(
+	new (&m_impl) Impl(
 		Socket(AdressFamilly::InterNetwork, SocketType::Stream, ProtocolType::Tcp), 
 		IPEndPoint(adress.adress, port)
 	);
@@ -588,7 +588,7 @@ TcpListener::~TcpListener()
 
 bool TcpListener::Pending()
 {
-	return reinterpret_cast<Impl*>(m_impl)->socket.Poll(0, SelectMode::SelectRead);
+	return reinterpret_cast<Impl*>(&m_impl)->socket.Poll(0, SelectMode::SelectRead);
 }
 
 void TcpListener::Start()
@@ -599,7 +599,7 @@ void TcpListener::Start()
 Socket TcpListener::Accept()
 {
 	Socket r;
-	reinterpret_cast<Impl*>(m_impl)->socket.Accept(r);
+	reinterpret_cast<Impl*>(&m_impl)->socket.Accept(r);
 	return r;
 }
 
@@ -610,13 +610,13 @@ void TcpListener::Start(int backlog)
         throw SocketException("Argument backlog is out of range.");
     }
 
-	reinterpret_cast<Impl*>(m_impl)->socket.Bind(reinterpret_cast<Impl*>(m_impl)->endPoint);
-	reinterpret_cast<Impl*>(m_impl)->socket.Listen(backlog);
+	reinterpret_cast<Impl*>(&m_impl)->socket.Bind(reinterpret_cast<Impl*>(&m_impl)->endPoint);
+	reinterpret_cast<Impl*>(&m_impl)->socket.Listen(backlog);
 }
 
 void TcpListener::Stop()
 {
-	reinterpret_cast<Impl*>(m_impl)->socket.Close();
+	reinterpret_cast<Impl*>(&m_impl)->socket.Close();
 }
 
 
